@@ -81,9 +81,24 @@ inputs:
       Only takes effect if the `downstream_repo` property is also defined.
 
       By default, uses the owner of the repository in which the workflow runs.
+
+      #### `accept_open_pr`
+
+      Specifies if action await only for merged PRs or attempt to backport also PRs which are open and worked on.
+      In case of subsequent update of PR, if a backport PR is open it will be recreated from begining.
+
+      By default this option is not set (undefined), only merged PRs are backported.
+      To attempt action to work with open PRs set value to true.
+
+      #### `comment_open_pr`
+
+      Specifies if action will post a comment on unmerged PRs.
+
+      By default this option is set to `true`.
     default: >
       {
-        "conflict_resolution": "fail"
+        "conflict_resolution": "fail",
+        "comment_open_pr": true,
       }
   github_token:
     description: >

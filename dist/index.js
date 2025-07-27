@@ -57,6 +57,8 @@ const experimentalDefaults = {
     conflict_resolution: `fail`,
     downstream_repo: undefined,
     downstream_owner: undefined,
+    accept_open_pr: undefined,
+    comment_open_pr: true,
 };
 exports.experimentalDefaults = experimentalDefaults;
 var Output;
@@ -71,6 +73,8 @@ class Backport {
     git;
     downstreamRepo;
     downstreamOwner;
+    acceptOpenPr;
+    commentOpenPr;
     constructor(github, config, git) {
         this.github = github;
         this.config = config;
@@ -78,6 +82,8 @@ class Backport {
         this.downstreamRepo = this.config.experimental.downstream_repo ?? undefined;
         this.downstreamOwner =
             this.config.experimental.downstream_owner ?? undefined;
+        this.acceptOpenPr = this.config.experimental.accept_open_pr ?? undefined;
+        this.commentOpenPr = this.config.experimental.comment_open_pr ?? true;
     }
     shouldUseDownstreamRepo() {
         return !!this.downstreamRepo;
@@ -102,14 +108,18 @@ class Backport {
                 ? this.github.getPullNumber()
                 : this.config.source_pr_number;
             const mainpr = await this.github.getPullRequest(pull_number);
-            if (!(await this.github.isMerged(mainpr))) {
+            const pr_is_merged = await this.github.isMerged(mainpr);
+            if (!pr_is_merged && !this.acceptOpenPr) {
                 const message = "Only merged pull requests can be backported.";
-                this.github.createComment({
-                    owner: workflowOwner,
-                    repo: workflowRepo,
-                    issue_number: pull_number,
-                    body: message,
-                });
+                console.log(message);
+                if (this.commentOpenPr) {
+                    this.github.createComment({
+                        owner: workflowOwner,
+                        repo: workflowRepo,
+                        issue_number: pull_number,
+                        body: message,
+                    });
+                }
                 return;
             }
             const target_branches = this.findTargetBranches(mainpr, this.config);

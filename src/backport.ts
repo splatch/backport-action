@@ -47,12 +47,16 @@ type Experimental = {
   conflict_resolution: "fail" | "draft_commit_conflicts";
   downstream_repo?: string;
   downstream_owner?: string;
+  accept_open_pr?: boolean;
+  comment_open_pr?: boolean;
 } & DeprecatedExperimental;
 const experimentalDefaults: Experimental = {
   detect_merge_method: undefined,
   conflict_resolution: `fail`,
   downstream_repo: undefined,
   downstream_owner: undefined,
+  accept_open_pr: undefined,
+  comment_open_pr: true,
 };
 export { experimentalDefaults, deprecatedExperimental };
 
@@ -69,6 +73,8 @@ export class Backport {
 
   private downstreamRepo;
   private downstreamOwner;
+  private acceptOpenPr;
+  private commentOpenPr;
 
   constructor(github: GithubApi, config: Config, git: Git) {
     this.github = github;
@@ -78,6 +84,8 @@ export class Backport {
     this.downstreamRepo = this.config.experimental.downstream_repo ?? undefined;
     this.downstreamOwner =
       this.config.experimental.downstream_owner ?? undefined;
+    this.acceptOpenPr = this.config.experimental.accept_open_pr ?? undefined;
+    this.commentOpenPr = this.config.experimental.comment_open_pr ?? true;
   }
 
   shouldUseDownstreamRepo(): boolean {
@@ -112,14 +120,18 @@ export class Backport {
           : this.config.source_pr_number;
       const mainpr = await this.github.getPullRequest(pull_number);
 
-      if (!(await this.github.isMerged(mainpr))) {
+      const pr_is_merged = await this.github.isMerged(mainpr)
+      if (!pr_is_merged && !this.acceptOpenPr) {
         const message = "Only merged pull requests can be backported.";
-        this.github.createComment({
-          owner: workflowOwner,
-          repo: workflowRepo,
-          issue_number: pull_number,
-          body: message,
-        });
+        console.log(message)
+        if (this.commentOpenPr) {
+          this.github.createComment({
+            owner: workflowOwner,
+            repo: workflowRepo,
+            issue_number: pull_number,
+            body: message,
+          });
+        }
         return;
       }
 
